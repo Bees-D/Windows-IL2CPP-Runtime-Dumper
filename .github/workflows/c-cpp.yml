@@ -1,6 +1,6 @@
 name: Build Dumper
 
-on: [workflow_dispatch] # Allows you to run it manually
+on: [workflow_dispatch]
 
 jobs:
   build:
@@ -12,10 +12,12 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build App
-        run: msbuild Il2CppRuntimeDumper.sln /p:Configuration=Release /p:Platform=x64
+        # This forces the output into a specific folder we can find easily
+        run: msbuild Il2CppRuntimeDumper.sln /p:Configuration=Release /p:Platform=x64 /p:OutDir=C:\build_output\
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Il2CppDumper-Binary
-          path: x64/Release/Il2CppRuntimeDumper.exe
+          # Now we point exactly to where we told MSBuild to put it
+          path: C:\build_output\Il2CppRuntimeDumper.exe
