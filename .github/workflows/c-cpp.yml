@@ -11,22 +11,29 @@ jobs:
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
+      - name: Restore NuGet Packages
+        # Sometimes builds fail because they are missing dependencies
+        run: msbuild -t:restore
+
       - name: Build App
-        # Standard build without forcing a weird output directory
-        run: msbuild Il2CppRuntimeDumper.sln /p:Configuration=Release /p:Platform=x64
+        # We added -verbosity:minimal to see the actual error if it fails
+        run: msbuild Il2CppRuntimeDumper.sln /p:Configuration=Release /p:Platform=x64 -verbosity:minimal
 
       - name: Find and Stage Artifact
-        # This script looks for the exe and copies it to a folder called 'staging'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path .\staging
-          $exe = Get-ChildItem -Path . -Filter "Il2CppRuntimeDumper.exe" -Recurse | Select-Object -First 1
-          if ($exe) {
-            Write-Host "Found exe at: $($exe.FullName)"
-            Copy-Item $exe.FullName -Destination .\staging\
+          $targetName = "Il2CppRuntimeDumper.exe"
+          Write-Host "Searching for $targetName..."
+          $files = Get-ChildItem -Path . -Filter $targetName -Recurse
+          if ($files) {
+              New-Item -ItemType Directory -Force -Path .\staging
+              foreach ($file in $files) {
+                  Write-Host "Found at: $($file.FullName)"
+                  Copy-Item $file.FullName -Destination .\staging\
+              }
           } else {
-            Write-Host "EXE NOT FOUND!"
-            exit 1
+              Write-Error "Could not find $targetName. The build likely failed."
+              exit 1
           }
 
       - name: Upload Artifact
