@@ -12,12 +12,25 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build App
-        # This forces the output into a specific folder we can find easily
-        run: msbuild Il2CppRuntimeDumper.sln /p:Configuration=Release /p:Platform=x64 /p:OutDir=C:\build_output\
+        # Standard build without forcing a weird output directory
+        run: msbuild Il2CppRuntimeDumper.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Find and Stage Artifact
+        # This script looks for the exe and copies it to a folder called 'staging'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .\staging
+          $exe = Get-ChildItem -Path . -Filter "Il2CppRuntimeDumper.exe" -Recurse | Select-Object -First 1
+          if ($exe) {
+            Write-Host "Found exe at: $($exe.FullName)"
+            Copy-Item $exe.FullName -Destination .\staging\
+          } else {
+            Write-Host "EXE NOT FOUND!"
+            exit 1
+          }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Il2CppDumper-Binary
-          # Now we point exactly to where we told MSBuild to put it
-          path: C:\build_output\Il2CppRuntimeDumper.exe
+          path: .\staging\
